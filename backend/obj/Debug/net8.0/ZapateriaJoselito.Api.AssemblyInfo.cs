@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ZapateriaJoselito.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b4cc776d651faac0ecff2f89ed1e58ce1087b5ce")]
 [assembly: System.Reflection.AssemblyProductAttribute("ZapateriaJoselito.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ZapateriaJoselito.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

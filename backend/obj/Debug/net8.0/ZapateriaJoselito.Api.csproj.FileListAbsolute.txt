@@ -133,3 +133,4 @@ C:\Users\ERIK\Downloads\ZapateriaJoselito-CRUD\ZapateriaJoselito\backend\obj\Deb
 C:\Users\ERIK\Downloads\ZapateriaJoselito-CRUD\ZapateriaJoselito\backend\obj\Debug\net8.0\ZapateriaJoselito.Api.pdb
 C:\Users\ERIK\Downloads\ZapateriaJoselito-CRUD\ZapateriaJoselito\backend\obj\Debug\net8.0\ZapateriaJoselito.Api.genruntimeconfig.cache
 C:\Users\ERIK\Downloads\ZapateriaJoselito-CRUD\ZapateriaJoselito\backend\obj\Debug\net8.0\ref\ZapateriaJoselito.Api.dll
+C:\Users\ERIK\Downloads\ZapateriaJoselito-CRUD\ZapateriaJoselito\backend\obj\Debug\net8.0\ZapateriaJoselito.Api.sourcelink.json
