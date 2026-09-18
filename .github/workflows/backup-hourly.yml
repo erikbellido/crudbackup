@@ -1,4 +1,4 @@
-name: Backup cada 1 hora
+name: Backup cada 1 hora → Google Drive
 
 on:
   schedule:
@@ -8,31 +8,51 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    env:
+      RCLONE_CONFIG_GDRIVE_TYPE: drive
+      RCLONE_CONFIG_GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+      RCLONE_CONFIG_GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+      RCLONE_CONFIG_GDRIVE_SCOPE: drive.file
+      RCLONE_CONFIG_GDRIVE_TOKEN: ${{ secrets.GDRIVE_TOKEN }}
 
     steps:
-      - name: Instalar cliente de PostgreSQL
+      - name: Instalar cliente PostgreSQL 17 (la versión debe coincidir con Supabase)
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y curl ca-certificates gnupg lsb-release
+          curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+          echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Instalar rclone
+        run: |
+          curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip
+          unzip -o rclone-current-linux-amd64.zip
+          sudo cp rclone-*-linux-amd64/rclone /usr/local/bin/
+          rclone version | head -2
 
       - name: Exportar base de datos con pg_dump
         env:
-          PGHOST: ${{ secrets.PGHOST }}
-          PGDATABASE: ${{ secrets.PGDATABASE }}
-          PGUSER: ${{ secrets.PGUSER }}
-          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          TIMESTAMP=$(date -u +'%Y%m%d_%H%M%S')
           FILENAME="backup_hourly_${TIMESTAMP}.sql.gz"
-          pg_dump --no-owner --no-privileges --clean --if-exists \
-            | gzip > "${FILENAME}"
-          echo "FILENAME=${FILENAME}" >> $GITHUB_ENV
+          pg_dump "$DATABASE_URL" --no-owner --no-privileges --clean --if-exists | gzip > "${FILENAME}"
+          echo "FILENAME=${FILENAME}" >> "$GITHUB_ENV"
 
-      - name: Subir backup a Azure Blob Storage
+      - name: Subir a Google Drive
         run: |
-          az storage blob upload \
-            --connection-string "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-            --container-name "${{ secrets.AZURE_STORAGE_CONTAINER }}" \
-            --name "hourly/${{ env.FILENAME }}" \
-            --file "${{ env.FILENAME }}" \
-            --overwrite
+          FOLDER="${GDRIVE_FOLDER:-backups-zapateria}"
+          rclone copyto "${FILENAME}" "gdrive:${FOLDER}/por-hora/${FILENAME}" \
+            --drive-chunk-size 8M
+
+      - name: Aplicar retención (conserva los últimos 7 días)
+        run: |
+          FOLDER="${GDRIVE_FOLDER:-backups-zapateria}"
+          rclone delete "gdrive:${FOLDER}/por-hora" --min-age 7d || true
+
+      - name: Mostrar últimos backups subidos
+        run: |
+          FOLDER="${GDRIVE_FOLDER:-backups-zapateria}"
+          rclone lsl "gdrive:${FOLDER}/por-hora" | tail -5
