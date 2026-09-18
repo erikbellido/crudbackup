@@ -105,6 +105,8 @@ npm run dev
 - Las columnas `Subtotal` (en `DetalleCompras` y `DetalleVentas`) son columnas
   generadas (`GENERATED ALWAYS AS ... STORED`, soportado desde PostgreSQL 12);
   el formulario no las muestra porque las genera la base de datos.
-- Los backups automáticos de GitHub Actions ahora usan `pg_dump` (crea
-  archivos `.sql.gz`) en lugar de `SqlPackage`/`.bacpac`. Configura los
-  secrets `PGHOST`, `PGDATABASE`, `PGUSER` y `PGPASSWORD` en el repositorio.
+- Los backups automáticos corren en GitHub Actions: `pg_dump` 17 de Supabase
+  y subida a **Google Drive** vía rclone (carpetas `cada-5min`, `por-hora` y
+  `diario`). Requiere los secrets `DATABASE_URL`, `GDRIVE_CLIENT_ID`,
+  `GDRIVE_CLIENT_SECRET` y `GDRIVE_TOKEN`. Guía completa de configuración y
+  restauración: [`docs/BACKUPS.md`](docs/BACKUPS.md).
