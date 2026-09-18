@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using ZapateriaJoselito.Api.Data;
 using ZapateriaJoselito.Api.Extensions;
 using ZapateriaJoselito.Api.Models;
@@ -9,8 +10,26 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── Cadena de conexión ─────────────────────────────────────────────────────
+// Prioridad: ConnectionStrings:Default (appsettings.json o variable de entorno
+// ConnectionStrings__Default) y luego DATABASE_URL.
+// Se aceptan dos formatos:
+//   1) Npgsql:      Host=...;Port=5432;Database=...;Username=...;Password=...
+//   2) URI Supabase: postgresql://usuario:password@host:5432/postgres
+//      (Npgsql no parsea URIs directamente, se convierten abajo)
+var cadenaOriginal = builder.Configuration.GetConnectionString("Default")
+                  ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+
+if (string.IsNullOrWhiteSpace(cadenaOriginal))
+    throw new InvalidOperationException(
+        "No hay cadena de conexión configurada. Define ConnectionStrings:Default en " +
+        "appsettings.json, o la variable de entorno ConnectionStrings__Default o DATABASE_URL " +
+        "(acepta el formato URI de Supabase)." );
+
+var cadenaConexion = NormalizarCadenaPostgres(cadenaOriginal);
+
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+    opt.UseNpgsql(cadenaConexion)
        .UseSnakeCaseNamingConvention()); // tablas/columnas en snake_case (roles, id_producto, ...)
 
 builder.Services.AddCors(options =>
@@ -27,6 +46,8 @@ builder.Services.ConfigureHttpJsonOptions(options => {
 });
 
 var app = builder.Build();
+
+app.Logger.LogInformation("Conectando a PostgreSQL: {Destino}", ResumenConexion(cadenaOriginal));
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -78,3 +99,46 @@ app.MapCrudEndpoints<Pago>("pagos");
 app.MapCrudEndpoints<Devolucion>("devoluciones");
 
 app.Run();
+
+// Convierte una URI postgresql:// de Supabase al formato Npgsql (Host=...;Port=...;)
+// y fuerza SSL, que Supabase exige. Si ya viene en formato Npgsql, la devuelve tal cual.
+static string NormalizarCadenaPostgres(string cadena)
+{
+    if (!cadena.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+        !cadena.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        return cadena.Trim();
+
+    var uri = new Uri(cadena);
+    var partes = uri.UserInfo.Split(':', 2);
+    var csb = new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432,
+        Database = uri.AbsolutePath.Trim('/'),
+        Username = Uri.UnescapeDataString(partes[0]),
+        Password = partes.Length > 1 ? Uri.UnescapeDataString(partes[1]) : null,
+        // Supabase exige SSL y su certificado no trae CA local:
+        SslMode = SslMode.Require,
+        TrustServerCertificate = true,
+    };
+    return csb.ConnectionString;
+}
+
+// Resumen seguro para el log (sin contraseña)
+static string ResumenConexion(string cadena)
+{
+    try
+    {
+        if (cadena.StartsWith("postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            var u = new Uri(cadena);
+            return $"{u.Host}:{(u.Port > 0 ? u.Port : 5432)}/{u.AbsolutePath.Trim('/')}";
+        }
+        var b = new NpgsqlConnectionStringBuilder(cadena);
+        return $"{b.Host}:{b.Port}/{b.Database}";
+    }
+    catch
+    {
+        return "(cadena no parseable)";
+    }
+}

@@ -39,6 +39,28 @@ Esto levanta PostgreSQL 16 en el puerto `5432` y ejecuta automáticamente
 > `precio_unitario`, ...) porque el backend aplica
 > `UseSnakeCaseNamingConvention()` de EF Core.
 
+### Opción C — Supabase (u otro Postgres gestionado)
+
+El backend acepta la cadena en dos formatos, en la variable de entorno
+`ConnectionStrings__Default` (Render) o `DATABASE_URL`:
+
+1. Formato Npgsql — copia la pestaña **.NET** del panel de Supabase
+   (Connect → Connection string):
+
+   ```
+   Host=aws-0-xx-xxxx.pooler.supabase.com;Database=postgres;Username=postgres.TUPROYECTO;Password=TU_PASSWORD
+   ```
+
+2. Formato URI (el backend lo convierte automáticamente y fuerza SSL):
+
+   ```
+   postgresql://postgres.TUPROYECTO:TU_PASSWORD@aws-0-xx-xxxx.pooler.supabase.com:5432/postgres
+   ```
+
+> Usa el host del **pooler** de Supabase (puerto 5432 sesión / 6543
+> transacciones); la conexión directa al puerto 5432 del host principal
+> requiere IPv6. Al usar URI se aplica `SslMode=Require` automáticamente.
+
 ## 2. Backend (`/backend`, .NET 8 Web API)
 
 ```bash
