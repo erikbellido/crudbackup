@@ -32,12 +32,16 @@ public class AppDbContext : DbContext
         // No se declaran relaciones de navegación a propósito: el objetivo es un
         // mapeo simple 1 a 1 contra las tablas ya creadas por el script .sql,
         // sin que EF intente generar ni exigir claves foráneas de navegación.
+        //
+        // PostgreSQL: las columnas generadas deben ser STORED y referencian a las
+        // demás columnas por su nombre real en la BD (snake_case, por la convención
+        // de nombres aplicada en Program.cs).
         modelBuilder.Entity<DetalleCompra>()
             .Property(d => d.Subtotal)
-            .HasComputedColumnSql("([Cantidad]*[PrecioUnitario])", stored: true);
+            .HasComputedColumnSql("(cantidad * precio_unitario)", stored: true);
 
         modelBuilder.Entity<DetalleVenta>()
             .Property(d => d.Subtotal)
-            .HasComputedColumnSql("([Cantidad]*[PrecioUnitario]-[Descuento])", stored: true);
+            .HasComputedColumnSql("(cantidad * precio_unitario - descuento)", stored: true);
     }
 }

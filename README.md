@@ -1,16 +1,43 @@
-# Zapatería Joselito — CRUD simple (.NET 8 + React)
+# Zapatería Joselito — CRUD simple (.NET 8 + React + PostgreSQL)
 
-CRUD genérico que se conecta a la base de datos `ZapateriaJoselitoDB` (script incluido:
-`ZapateriaJoselito_BD.sql`) y muestra/edita los datos de las 18 tablas sin escribir
-un controlador por cada una: un solo endpoint genérico (`CrudEndpointExtensions.cs`)
-sirve listar, crear, editar y eliminar para cualquier tabla, y el frontend arma la
-tabla y el formulario automáticamente leyendo la metadata de cada entidad.
+CRUD genérico que se conecta a la base de datos PostgreSQL `zapateria_joselito`
+(script incluido: `ZapateriaJoselito_BD_postgres.sql`) y muestra/edita los datos de
+las 18 tablas sin escribir un controlador por cada una: un solo endpoint genérico
+(`CrudEndpointExtensions.cs`) sirve listar, crear, editar y eliminar para cualquier
+tabla, y el frontend arma la tabla y el formulario automáticamente leyendo la
+metadata de cada entidad.
 
-## 1. Base de datos
+## 1. Base de datos (PostgreSQL)
 
-1. Abre SQL Server Management Studio (o Azure Data Studio).
-2. Ejecuta `ZapateriaJoselito_BD.sql`. Esto crea la base `ZapateriaJoselitoDB`, las
-   18 tablas y los datos de prueba.
+### Opción A — Docker (recomendada)
+
+Desde la raíz del proyecto:
+
+```bash
+docker compose up -d
+```
+
+Esto levanta PostgreSQL 16 en el puerto `5432` y ejecuta automáticamente
+`ZapateriaJoselito_BD_postgres.sql` (crea las 18 tablas y los datos de prueba).
+
+### Opción B — Instalación manual
+
+1. Crea el usuario y la base de datos:
+
+   ```sql
+   CREATE USER joselito WITH PASSWORD 'joselito123';
+   CREATE DATABASE zapateria_joselito OWNER joselito;
+   ```
+
+2. Ejecuta el script conectado a esa base:
+
+   ```bash
+   psql -U joselito -d zapateria_joselito -f ZapateriaJoselito_BD_postgres.sql
+   ```
+
+> **Nota:** las tablas y columnas usan `snake_case` (`id_producto`,
+> `precio_unitario`, ...) porque el backend aplica
+> `UseSnakeCaseNamingConvention()` de EF Core.
 
 ## 2. Backend (`/backend`, .NET 8 Web API)
 
@@ -21,7 +48,7 @@ dotnet run
 ```
 
 - Antes de correrlo, ajusta la cadena de conexión en `appsettings.json`
-  (`ConnectionStrings:Default`) con tu servidor/usuario de SQL Server.
+  (`ConnectionStrings:Default`) con tu host/usuario/contraseña de PostgreSQL.
 - Al iniciar, Swagger queda disponible en `https://localhost:7000/swagger`
   (el puerto exacto lo indica la consola).
 - Endpoints disponibles por cada tabla, por ejemplo para `productos`:
@@ -54,5 +81,8 @@ npm run dev
   números sueltos, no como selects con nombres. Es fácil de mejorar tabla por
   tabla más adelante si se necesita.
 - Las columnas `Subtotal` (en `DetalleCompras` y `DetalleVentas`) son columnas
-  calculadas por SQL Server; el formulario no las muestra porque las genera la
-  base de datos.
+  generadas (`GENERATED ALWAYS AS ... STORED`, soportado desde PostgreSQL 12);
+  el formulario no las muestra porque las genera la base de datos.
+- Los backups automáticos de GitHub Actions ahora usan `pg_dump` (crea
+  archivos `.sql.gz`) en lugar de `SqlPackage`/`.bacpac`. Configura los
+  secrets `PGHOST`, `PGDATABASE`, `PGUSER` y `PGPASSWORD` en el repositorio.

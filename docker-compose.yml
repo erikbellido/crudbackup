@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: joselito-postgres
+    environment:
+      POSTGRES_USER: joselito
+      POSTGRES_PASSWORD: joselito123
+      POSTGRES_DB: zapateria_joselito
+    ports:
+      - "5432:5432"
+    volumes:
+      # Crea las 18 tablas y carga los datos de prueba la primera vez
+      - ./ZapateriaJoselito_BD_postgres.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - joselito_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U joselito -d zapateria_joselito"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: joselito-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=zapateria_joselito;Username=joselito;Password=joselito123"
+    ports:
+      - "7000:8080"
+
+volumes:
+  joselito_pgdata:

@@ -1,0 +1,38 @@
+name: Backup diario (cada mañana)
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 13:00 UTC = 8:00 AM hora de México (UTC-6)
+  workflow_dispatch: # Permite ejecutarlo manualmente para pruebas
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Instalar cliente de PostgreSQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Exportar base de datos con pg_dump
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          FILENAME="backup_daily_${TIMESTAMP}.sql.gz"
+          pg_dump --no-owner --no-privileges --clean --if-exists \
+            | gzip > "${FILENAME}"
+          echo "FILENAME=${FILENAME}" >> $GITHUB_ENV
+
+      - name: Subir backup a Azure Blob Storage
+        run: |
+          az storage blob upload \
+            --connection-string "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+            --container-name "${{ secrets.AZURE_STORAGE_CONTAINER }}" \
+            --name "daily/${{ env.FILENAME }}" \
+            --file "${{ env.FILENAME }}" \
+            --overwrite

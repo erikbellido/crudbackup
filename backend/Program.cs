@@ -3,10 +3,15 @@ using ZapateriaJoselito.Api.Data;
 using ZapateriaJoselito.Api.Extensions;
 using ZapateriaJoselito.Api.Models;
 
+// Npgsql: tratar DateTime como 'timestamp without time zone' (comportamiento previo a Npgsql 6),
+// compatible con los valores DateTime.Now que asignan las entidades.
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+       .UseSnakeCaseNamingConvention()); // tablas/columnas en snake_case (roles, id_producto, ...)
 
 builder.Services.AddCors(options =>
 {

@@ -1,0 +1,38 @@
+name: Backup cada 1 hora
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: # Permite ejecutarlo manualmente para pruebas
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Instalar cliente de PostgreSQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Exportar base de datos con pg_dump
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          FILENAME="backup_hourly_${TIMESTAMP}.sql.gz"
+          pg_dump --no-owner --no-privileges --clean --if-exists \
+            | gzip > "${FILENAME}"
+          echo "FILENAME=${FILENAME}" >> $GITHUB_ENV
+
+      - name: Subir backup a Azure Blob Storage
+        run: |
+          az storage blob upload \
+            --connection-string "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+            --container-name "${{ secrets.AZURE_STORAGE_CONTAINER }}" \
+            --name "hourly/${{ env.FILENAME }}" \
+            --file "${{ env.FILENAME }}" \
+            --overwrite
